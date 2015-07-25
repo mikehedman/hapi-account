@@ -13,6 +13,8 @@ var account = new Account({
   url: 'https://example.com/account/api',
   validate: function(options) {
     // custom validations, must return undefined or an array of errors
+    
+    //For me, this needs to be explained more.  Is this a function that will be called when the user signs up, like to validate the password length, etc.?  If so, then it should have a different name than the one listed 13 lines below "account.validate" which seems to have many more capabilities.
   }
 })
 
@@ -21,6 +23,7 @@ account.isSignedIn()
 
 account.signUp()
 account.confirm()
+//funny how github markdown decided that 'confirm' needs to be blue, but all the others are black
 account.signIn()
 account.signOut()
 account.request()
@@ -69,7 +72,8 @@ Returns `Promise`:
 - rejects with
   - http request error
   - username taken error
-  - schema validation error (e.g. password to short)
+  - validation error (e.g. password to short)
+//I don't think "schema" is the right word here. To me, schema implies database.
 
 Simple example
 
@@ -103,6 +107,11 @@ Arguments:
 Returns `Promise`:
 
 - resolves with `username`
+//We should think through the user flow here, since this is the client api.  Specifically, would the user be signed in when this function is called?  If so, then they signed in and got a reminder: "Hey, you've signed up, but please check your mail for your confirmation token.", and then they would call this function. In this case, returning the username makes sense.
+But if they have not yet signed in, then to me it's a bit more problematic to return the username because it *feels* like the confirm process also signed them in...but they didn't supply their password.  
+My thought is that calling confirm() when not signed in is probably not a needed use case.
+This is probably going to force us to consider what *exactly* to do when a user signs in but they are unconfirmed.  
+
 - rejects with
   - http request error
   - token invalid error
@@ -127,6 +136,7 @@ Returns `Promise`:
   - http request error
   - username not found error
   - invalid password error
+// and perhaps an "unconfirmed" option as well
 
 ```js
 account.signIn({
@@ -173,6 +183,7 @@ account.request('username reminder', { email: 'joe@example.com' })
 ```
 
 Request an account upgrade
+//todo - give list of 'stock' actions (like password:reset), and in another doc need to specify how to define developer supplied actions (like 'upgrade')
 
 ```js
 account.request('upgrade', { plan: 'pro' })
@@ -219,7 +230,7 @@ var account = account.get()
 console.log('Greetings to  ' + account.profile.address.city)
 ```
 
-Get single property. Use `.` to get a nested property.
+Get single property from the local cache. Use `.` to get a nested property.
 
 ```js
 var city = account.get('profile.address.city')
@@ -247,7 +258,7 @@ Returns `Promise`
   - http request error
   - unauthenticated error
 
-Fetch profile properties (does not include secure-read properties)
+Fetch profile properties from the server (does not include secure-read properties)
 
 ```js
 account.fetch()
@@ -256,7 +267,7 @@ account.fetch()
 })
 ```
 
-Fetch one account property
+Fetch one account property from the server
 
 ```js
 account.fetch('profile.nickName')
@@ -273,7 +284,8 @@ account.fetch(['profile.doorPin', 'profile.secretNickName'], {password: 'current
 ### account.update()
 
 - changedProperties (object) _required_
-- options (object) _required_
+- options (object)
+//the options argument is not always required, such as when updating a profile field
   - authOptions.token (string) _required if not signed in_
   - authOptions.password (string) _required to change secure-write properties, unless token set_
 
@@ -321,6 +333,7 @@ Update one property
 account.update({profile: {nickname: 'FunkyFoo'}})
 .then(function () {})
 .catch(function (error) {})
+//should this .then ... .catch block be included in the three previous examples as well?  It's in 3, and not in 3 - might be confusing.  My suggestion would be to put it on the first example (to show the complete signature), and then not included it on the remaining examples for brevity.
 ```
 
 Update multiple properties
@@ -347,11 +360,11 @@ account.update({profile: {keys: {github: 'abc4567'}}}, {password: 'currentpasswo
   - profile (object)
   - remote (boolean)
 
-If `options.remote` is false, returns
+If `options.remote` is false, only client side validations will be performed. Returns
 - `undefined` if there are no errors
 - `[error]` array if there are errors
 
-If `options.remote` is true, returns `Promise` and
+If `options.remote` is true, server-side validations will also be performed. Returns `Promise` and
 - resolves with `property` value or `properties`
 - rejects with `[error]` array
 
